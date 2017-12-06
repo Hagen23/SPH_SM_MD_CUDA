@@ -105,7 +105,7 @@ Solver::Solver(unsigned int _num_particles) :num_particles(_num_particles)
 	gridNum = GRID_SIZE * GRID_SIZE * GRID_SIZE;
 
 	/// Set simulation parameters
-	pa.mass = 30.f;
+	pa.mass = 40.f;
 	pa.dt = 0.03f;
 
 	pa.xmin = 0.0f;
@@ -120,20 +120,20 @@ Solver::Solver(unsigned int _num_particles) :num_particles(_num_particles)
 	pa.gridSize.z = GRID_SIZE;
 	pa.cellSize = 1;
 
-	pa.h = 1.7f;
+	pa.h = 1.9f;
 	pa.k = 0.008f;
 	pa.restDens = 1112.0f;
-	pa.mu = 100.0f;
+	pa.mu = 200.0f;
 
 	pa.alpha = 0.7f;
 	pa.beta = 0.2f;
 	pa.quadraticMatch = false;
-	pa.volumeConservation = true;
-	pa.allowFlip = false;
+	pa.volumeConservation = false;
+	pa.allowFlip = true;
 
-	pa.velocity_mixing = 0.5f;
+	pa.velocity_mixing = 0.8f;
 
-	pa.max_voltage = 1000;
+	pa.max_voltage = 1500;
 	pa.max_pressure = 15000;
 	pa.voltage_constant = 50;
 	pa.stim_strength = 80000.0f;
@@ -166,6 +166,11 @@ Solver::Solver(unsigned int _num_particles) :num_particles(_num_particles)
 	mGoalPos = (m3Vector*)malloc(sizeof(m3Vector) * num_particles);
 	mFixed = (bool*)malloc(sizeof(bool)*num_particles);
 
+	for(int index = 0; index < num_particles; index++)
+	{
+		mFixed[index] = false;
+	}
+
 	hVm = (float*)malloc(size1);
 	hStim = (float*)malloc(size1);
 
@@ -194,9 +199,6 @@ Solver::Solver(unsigned int _num_particles) :num_particles(_num_particles)
 	HandleError(cudaMalloc((void**) &dW, size1), "Failed to allocate memory of dW");
 	HandleError(cudaMalloc((void**) &dStim, size1), "Failed to allocate memory of dStim");
 	HandleError(cudaMalloc((void**) &dsStim, size1), "Failed to allocate memory of dsStim");
-
-	InitParticles();
-	set_stim();
 
 	// HandleError(cudaMemcpy(dpos, hpos, size3, cudaMemcpyHostToDevice), "Failed to copy memory of hpos!");
 	HandleError(cudaMemset(dvel, 0, size3), "Failed to memset dvel!");
@@ -246,7 +248,6 @@ Solver::~Solver()
 	HandleError(cudaFree(dsvel), "Failed to free dsvel!");
 }
 
-
 void Solver::InitParticles()
 {
 	/// Initializing a set number of particles
@@ -261,6 +262,16 @@ void Solver::InitParticles()
 		hpos[index].z = mOriginalPos[index].z = mGoalPos[index].z = k + 24;
 
 		mFixed[index] = false;
+	}
+}
+
+void Solver::InitParticles(vector<float3> positions)
+{
+	for (int i = 0; i < num_particles; i++)
+	{
+		hpos[i].x = mOriginalPos[i].x = mGoalPos[i].x = positions[i].x;
+		hpos[i].y = mOriginalPos[i].y = mGoalPos[i].y = positions[i].y;
+		hpos[i].z = mOriginalPos[i].z = mGoalPos[i].z = positions[i].z;
 	}
 }
 
@@ -512,12 +523,21 @@ void Solver::set_stim()
 	{
 		float3 position = hpos[i];
 		
-		if( (position.x >= 16 && position.x <=20) || (position.x >= 43 && position.x <= 47))
+		// if( (position.x >= 16 && position.x <=20) || (position.x >= 43 && position.x <= 47))
+		// {
+		// 	hStim[i] = pa.stim_strength;
+
+		// 	if (position.y == 0.0f)
+		// 		mFixed[i] = true;
+		// }
+		if( (position.x >= 0 && position.x <=20) || (position.x >= 44 && position.x <= 64))
 		{
 			hStim[i] = pa.stim_strength;
-
-			if (position.y == 0.0f)
-				mFixed[i] = true;
+		}
+		
+		if (position.x < 1 || position.x > 63)
+		{
+			mFixed[i] = true;
 		}
 	}
 }

@@ -19,6 +19,7 @@ This class implements the SPH with CUDA.
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#include <vector>
 
 #define GRID_SIZE 		64
 #define NUM_PARTICLES	16384
@@ -83,7 +84,6 @@ private:
 
 	Parameters 		pa;				/// Parameters of the simulation.
 
-	void InitParticles();
 
 	/// SM methods
 	void calculate_corrected_velocity();
@@ -99,6 +99,9 @@ public:
 	Solver(unsigned int _num_particles);
 	~Solver();
 
+	void InitParticles();
+	void InitParticles(vector<float3> positions);
+	
 	void Update();
 
 	/// MD methods

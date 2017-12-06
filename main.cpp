@@ -11,6 +11,7 @@ Based on the particles sample from the CUDA samples.
 #include <cstdio>
 #include <iostream>
 #include <ctime>
+#include <vector>
 
 #include <GL/freeglut.h>
 
@@ -35,11 +36,17 @@ float translate_z = -100.0;
 /// Keyboard controls
 bool keypressed = false, simulate = true;
 
+const int max_time_steps = 800;
+int time_steps = max_time_steps;
+bool simulation_active = true;
+
 Solver *solver;
 
 struct color{
 	float r, g, b;
 };
+
+void exit_simulation();
 
 void calculateFPS()
 {
@@ -72,6 +79,25 @@ void calculateFPS()
 	}
 }
 
+void readCloudFromFile(const char* filename, vector<float3>* points)
+{
+	FILE *ifp;
+	float x, y, z;
+	int aux = 0;
+
+	if ((ifp = fopen(filename, "r")) == NULL)
+	{
+		// fprintf(stderr, "Can't open input file!\n");
+		return;
+	}
+
+	while ((aux = fscanf(ifp, "%f,%f,%f\n", &x, &y, &z)) != EOF)
+	{
+		if (aux == 3)
+			points->push_back(make_float3(x,y,z));
+	}
+}
+
 void init(void)
 {
 	const GLubyte* renderer;
@@ -90,17 +116,40 @@ void init(void)
 	glShadeModel(GL_SMOOTH);
 	glEnable(GL_DEPTH_TEST);
 
-	solver = new Solver(NUM_PARTICLES);
+	std::vector<float3> position;
+	readCloudFromFile("Resources/biceps_simple_out_18475.csv", &position);
+
+	solver = new Solver(position.size());
+	solver->InitParticles(position);
+
+	// solver = new Solver(NUM_PARTICLES);
+	// solver->InitParticles();
+	
+	solver->set_stim();
 }
 
 void idle(void)
 {
-	if(simulate)
-		solver->Update();
-
 	calculateFPS();
-	sprintf(fps_message, "SPH FPS %.3f", fps);
+	sprintf(fps_message, "SPH FPS %.3f %d", fps, time_steps);
 	glutSetWindowTitle(fps_message);
+
+	if(time_steps > 0 && simulate && simulation_active)
+	{
+		if(time_steps == max_time_steps - max_time_steps / 2)
+			solver->set_stim_off();
+
+		if(simulate)
+		{
+			solver->Update();
+			time_steps --;
+		}
+	}
+	else if(time_steps == 0 && simulation_active)
+	{
+		simulation_active = false;		
+		exit_simulation();
+	}
 
 	glutPostRedisplay();
 }
